@@ -19,13 +19,12 @@ HEADERS = {
 
 SOURCES = [
     # English
-    {"name": "ArXiv AI",        "feed": "http://export.arxiv.org/rss/cs.AI",          "lang": "en"},
-    {"name": "ArXiv ML",        "feed": "http://export.arxiv.org/rss/cs.LG",          "lang": "en"},
-    {"name": "ArXiv Bio",       "feed": "http://export.arxiv.org/rss/q-bio.QM",       "lang": "en"},
-    {"name": "Nature AI",       "feed": "https://www.nature.com/subjects/artificial-intelligence.rss", "lang": "en"},
+    {"name": "ArXiv AI",        "feed": "https://rss.arxiv.org/rss/cs.AI",            "lang": "en"},
+    {"name": "ArXiv ML",        "feed": "https://rss.arxiv.org/rss/cs.LG",            "lang": "en"},
+    {"name": "ArXiv Bio",       "feed": "https://rss.arxiv.org/rss/q-bio.QM",         "lang": "en"},
     {"name": "MIT Tech Review", "feed": "https://www.technologyreview.com/tag/artificial-intelligence/feed/", "lang": "en"},
     {"name": "TechCrunch AI",   "feed": "https://techcrunch.com/category/artificial-intelligence/feed/", "lang": "en"},
-    # Chinese
+    # Chinese (Google News may only work from GitHub Actions runners)
     {"name": "Google News - AI医疗",  "feed": "https://news.google.com/rss/search?q=AI+%E5%8C%BB%E7%96%97&hl=zh-CN&gl=CN&ceid=CN:zh-Hans", "lang": "zh"},
     {"name": "Google News - 人工智能医疗", "feed": "https://news.google.com/rss/search?q=%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD+%E5%8C%BB%E7%96%97&hl=zh-CN&gl=CN&ceid=CN:zh-Hans", "lang": "zh"},
 ]
