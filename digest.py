@@ -76,6 +76,36 @@ CATEGORY_ORDER = [
     "Industry & Policy", "Other",
 ]
 
+# Google Translate 缓存和可用状态
+_GT_CACHE = {}
+_GT_AVAILABLE = None
+
+def translate_to_zh(text: str) -> str:
+    """将英文文本翻译为中文。如果翻译失败（如 Google 不可达），返回原文。"""
+    if not text or len(text.strip()) < 3:
+        return text
+    # 已有中文字符则跳过翻译
+    if re.search(r"[一-鿿]", text[:20]):
+        return text
+    cache_key = text[:120]
+    if cache_key in _GT_CACHE:
+        return _GT_CACHE[cache_key]
+    global _GT_AVAILABLE
+    if _GT_AVAILABLE is False:
+        return text
+    try:
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {"client": "gtx", "sl": "en", "tl": "zh-CN", "dt": "t", "q": text[:2000]}
+        resp = requests.get(url, params=params, timeout=8)
+        resp.raise_for_status()
+        result = "".join(p[0] for p in resp.json()[0] if p[0])
+        _GT_CACHE[cache_key] = result
+        _GT_AVAILABLE = True
+        return result
+    except Exception:
+        _GT_AVAILABLE = False
+        return text
+
 
 def is_relevant(title: str, summary: str) -> bool:
     text = f"{title} {summary}".lower()
@@ -95,11 +125,9 @@ def fetch_rss(source: dict) -> list:
                 continue
             summary = html.unescape(entry.get("summary", entry.get("description", ""))).strip()
             summary = re.sub(r"<[^>]+>", "", summary)
-            # 提取 arXiv 论文摘要
-            if "arxiv.org" in link:
-                m = re.search(r"Abstract:\s*(.*?)(?:\n\S|\Z)", summary, re.DOTALL)
-                if m:
-                    summary = m.group(1).strip()
+            # 提取 arXiv 论文摘要（去掉前面的元数据）
+            if "arxiv.org" in link and "Abstract:" in summary:
+                summary = summary.split("Abstract:", 1)[1].strip()
             items.append({
                 "title": title,
                 "link": link,
@@ -281,8 +309,10 @@ def generate_digest():
             lines.append(f"- [{title}]({item['link']}) — {item['source']}")
             summary = article_summaries.get(item["link"], item["summary"])
             if summary:
-                display = summary[:400].replace("\n", " ")
-                lines.append(f"  > {display}")
+                # 避免重复标题
+                if not summary[:60].startswith(item["title"][:40]):
+                    display = summary[:400].replace("\n", " ")
+                    lines.append(f"  > {display}")
             lines.append("")
 
     # ---- 英文资讯 ----
@@ -300,11 +330,13 @@ def generate_digest():
             cat_zh = CATEGORY_ZH.get(cat, cat)
             lines.append(f"### {cat_zh}\n")
             for item in items[:8]:
-                title = item["title"][:100] + "..." if len(item["title"]) > 100 else item["title"]
-                lines.append(f"- [{title}]({item['link']}) — {item['source']}")
+                title_zh = translate_to_zh(item["title"])
+                title_short = title_zh[:100] + "..." if len(title_zh) > 100 else title_zh
+                lines.append(f"- [{title_short}]({item['link']}) — {item['source']}")
                 summary = article_summaries.get(item["link"], item["summary"])
-                if summary:
-                    display = summary[:400].replace("\n", " ")
+                if summary and not summary[:60].startswith(item["title"][:40]):
+                    summary_zh = translate_to_zh(summary[:500])
+                    display = summary_zh[:400].replace("\n", " ")
                     lines.append(f"  > {display}")
                 lines.append("")
 
