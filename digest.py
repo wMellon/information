@@ -107,6 +107,27 @@ def translate_to_zh(text: str) -> str:
         return text
 
 
+def is_title_only(title: str, summary: str) -> bool:
+    """检查摘要是否只是标题的重复（避免把标题当内容显示）"""
+    if not title or not summary:
+        return False
+    t = title.lower().strip()
+    s = summary.lower().strip()
+    if t == s:
+        return True
+    if len(t) > 10 and s.startswith(t[:25]):
+        return True
+    # 中文：字符级重叠检测
+    if re.search(r"[一-鿿]", t):
+        common = set(t[:30]) & set(s[:60])
+        return len(common) / max(len(set(t[:30])), 1) > 0.8
+    # 英文：词级重叠检测
+    tw = set(t.split()[:10])
+    sw = set(s.split()[:15])
+    common = tw & sw
+    return len(common) / max(len(tw), 1) > 0.7
+
+
 def is_relevant(title: str, summary: str) -> bool:
     text = f"{title} {summary}".lower()
     return any(kw.lower() in text for kw in RELEVANCE_KEYWORDS)
@@ -216,7 +237,7 @@ def fetch_article_content(url: str, timeout: int = 12) -> str | None:
         return None
 
 
-def summarize_content(text: str, max_chars: int = 300) -> str:
+def summarize_content(text: str, title: str = "", max_chars: int = 300) -> str:
     """从正文中提取关键段落作为摘要（优先找含有关键词的开头段落）"""
     if not text:
         return ""
@@ -224,6 +245,12 @@ def summarize_content(text: str, max_chars: int = 300) -> str:
     paragraphs = [p.strip() for p in paragraphs if len(p.strip()) > 30]
     if not paragraphs:
         return text[:max_chars]
+
+    # 跳过只是重复标题的段落
+    if title:
+        paragraphs = [p for p in paragraphs if not is_title_only(title, p)]
+    if not paragraphs:
+        return ""
 
     start_idx = 0
     for i, para in enumerate(paragraphs):
@@ -258,7 +285,9 @@ def fetch_all_articles(items: list) -> dict:
             try:
                 content = fut.result()
                 if content:
-                    results[url] = summarize_content(content)
+                    item = next((it for it in items if it["link"] == url), None)
+                    title = item["title"] if item else ""
+                    results[url] = summarize_content(content, title)
             except Exception:
                 continue
     return results
@@ -308,11 +337,9 @@ def generate_digest():
             title = item["title"][:80] + "..." if len(item["title"]) > 80 else item["title"]
             lines.append(f"- [{title}]({item['link']}) — {item['source']}")
             summary = article_summaries.get(item["link"], item["summary"])
-            if summary:
-                # 避免重复标题
-                if not summary[:60].startswith(item["title"][:40]):
-                    display = summary[:400].replace("\n", " ")
-                    lines.append(f"  > {display}")
+            if summary and not is_title_only(item["title"], summary):
+                display = summary[:400].replace("\n", " ")
+                lines.append(f"  > {display}")
             lines.append("")
 
     # ---- 英文资讯 ----
@@ -334,7 +361,7 @@ def generate_digest():
                 title_short = title_zh[:100] + "..." if len(title_zh) > 100 else title_zh
                 lines.append(f"- [{title_short}]({item['link']}) — {item['source']}")
                 summary = article_summaries.get(item["link"], item["summary"])
-                if summary and not summary[:60].startswith(item["title"][:40]):
+                if summary and not is_title_only(item["title"], summary):
                     summary_zh = translate_to_zh(summary[:500])
                     display = summary_zh[:400].replace("\n", " ")
                     lines.append(f"  > {display}")
