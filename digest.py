@@ -27,9 +27,8 @@ SOURCES = [
     {"name": "MIT Tech Review", "feed": "https://www.technologyreview.com/tag/artificial-intelligence/feed/", "lang": "en"},
     {"name": "TechCrunch AI",   "feed": "https://techcrunch.com/category/artificial-intelligence/feed/", "lang": "en"},
     # 中文源
-    {"name": "Google News - AI医疗",  "feed": "https://news.google.com/rss/search?q=AI+%E5%8C%BB%E7%96%97&hl=zh-CN&gl=CN&ceid=CN:zh-Hans", "lang": "zh"},
-    {"name": "Google News - 人工智能医疗", "feed": "https://news.google.com/rss/search?q=%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD+%E5%8C%BB%E7%96%97&hl=zh-CN&gl=CN&ceid=CN:zh-Hans", "lang": "zh"},
-    {"name": "Solidot",                "feed": "https://www.solidot.org/index.rss",                                           "lang": "zh"},
+    {"name": "量子位",                "feed": "https://www.qbitai.com/feed",                                                "lang": "zh"},
+    {"name": "Solidot",               "feed": "https://www.solidot.org/index.rss",                                           "lang": "zh"},
 ]
 
 PUBMED_QUERY = (
@@ -57,6 +56,8 @@ RELEVANCE_KEYWORDS = [
     "手术", "治疗", "生物", "制药", "医院",
     "数字健康", "精准医疗", "医疗AI", "智慧医疗",
     "临床试验", "医疗器械", "生物技术",
+    "智能", "模型", "算法", "具身智能", "生成式",
+    "机器人", "自动驾驶", "神经", "芯片", "数据",
 ]
 
 # 英文分类名 → 中文翻译
@@ -242,6 +243,10 @@ def summarize_content(text: str, title: str = "", max_chars: int = 300) -> str:
     """从正文中提取关键段落作为摘要（优先找含有关键词的开头段落）"""
     if not text:
         return ""
+    # 清理残留的 HTML 标签和多余空白
+    text = re.sub(r"<[^>]+>", "", text)
+    lines = [l.strip() for l in text.split("\n")]
+    text = "\n".join(l for l in lines if l)
     paragraphs = re.split(r"\n\s*\n", text)
     paragraphs = [p.strip() for p in paragraphs if len(p.strip()) > 30]
     if not paragraphs:
